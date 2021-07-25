@@ -1,6 +1,6 @@
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
-import play.api.libs.json.{JsPath, JsResult, Json, Reads}
+import play.api.libs.json.{JsError, JsPath, JsResult, JsSuccess, Json, Reads}
 
 import java.util
 import java.util.logging.{Level, Logger}
@@ -20,9 +20,7 @@ object alert_consummer extends App {
 
   props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
   props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
-  props.put("group.id", "something")
-  // Distribue
-  props.put("partition.assignment.strategy","org.apache.kafka.clients.consumer.StickyAssignor")
+   props.put("group.id", "something")
 
   val consumer = new KafkaConsumer[String, String](props)
 
@@ -49,23 +47,42 @@ object alert_consummer extends App {
     val records=consumer.poll(100)
     records.forEach(record =>{
       val res = record.value().replace("\\","").dropRight(1).substring(1)
-      println(res)
+      //println(res)
       val jsonval =Json.parse(res)
       val rapport2Result : JsResult[Rapport2] = jsonval.validate[Rapport2]
+      rapport2Result match {
+        case JsSuccess(value, path) => {
+          val list_positivite = value.list_positivite
+          val list_nom = value.list_nom
+          val list_prenom = value.list_prenom
+          val ville = value.ville
+          val timestamp = value.timestamp
+          val battery = value.battery
+          val list_id = value.list_id
+          val id_drone = value.id_drone
 
-      val bad_indices = rapport2Result.get.list_positivite.zipWithIndex.collect{
-        case (value, index) if value > 90 => index
+          val bad_indices = list_positivite.zipWithIndex.collect{
+            case (value, index) if value > 90 => index
+          }
+
+          if (bad_indices.nonEmpty){
+            // val bad_ids = bad_indices.map(rapport2Result.get.list_id)
+
+            val bad_noms = bad_indices.map(list_nom)
+            val bad_prenoms = bad_indices.map(list_prenom)
+            val bad_positivity = bad_indices.map(list_positivite)
+            println("**********************")
+            println(" Warning, in ",ville," the following citizens are not happy : ",bad_prenoms zip bad_noms, "their score is : ", bad_positivity, ". Message sent by drone:", id_drone, "at", timestamp)
+            println("**********************")
+          }
+
+
+        }
+        case _ => println("Une erreur inntaendue est survenue lors de la lecture du rapport")
       }
 
-      if (bad_indices.nonEmpty){
-        // val bad_ids = bad_indices.map(rapport2Result.get.list_id)
-        val bad_noms = bad_indices.map(rapport2Result.get.list_nom)
-        val bad_prenoms = bad_indices.map(rapport2Result.get.list_prenom)
-        val bad_positivity = bad_indices.map(rapport2Result.get.list_positivite)
-        println("**********************")
-        println(" Warning, in ",rapport2Result.get.ville," the following citizens are not happy : ",bad_prenoms zip bad_noms, "their score is : ", bad_positivity, ". Message sent by drone:", rapport2Result.get.id_drone, "at", rapport2Result.get.timestamp)
-        println("**********************")
-      }
+
+
 
     }
     )
