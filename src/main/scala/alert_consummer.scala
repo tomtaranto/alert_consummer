@@ -20,9 +20,7 @@ object alert_consummer extends App {
 
   props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
   props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
-  props.put("group.id", "something")
-  // DISTRIBUTED
-  // https://kafka.apache.org/10/javadoc/org/apache/kafka/clients/consumer/StickyAssignor.html
+  props.put("group.id", "something_alert")
   props.put("partition.assignment.strategy","org.apache.kafka.clients.consumer.StickyAssignor")
 
   val consumer = new KafkaConsumer[String, String](props)
@@ -83,9 +81,6 @@ object alert_consummer extends App {
         }
         case _ => println("Une erreur inntaendue est survenue lors de la lecture du rapport")
       }
-
-
-
 
     }
     )
